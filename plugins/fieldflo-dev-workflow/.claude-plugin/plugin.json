@@ -1,0 +1,9 @@
+{
+  "name": "fieldflo-dev-workflow",
+  "description": "FieldFlo Jira-ticket dev workflow: develop-fieldflo orchestrator (with a startup dependency-check gate), pr-review, prisma-migrations, update-openapi, and reset-environment skills, plus the fieldflo-* subagent team they delegate to.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Srdjan Mis",
+    "email": "srdjan@fieldflo.com"
+  }
+}

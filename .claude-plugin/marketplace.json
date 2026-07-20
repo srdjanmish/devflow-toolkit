@@ -1,0 +1,14 @@
+{
+  "name": "fieldflo-dev-workflow-marketplace",
+  "owner": {
+    "name": "Srdjan Mis",
+    "email": "srdjan@fieldflo.com"
+  },
+  "plugins": [
+    {
+      "name": "fieldflo-dev-workflow",
+      "source": "./plugins/fieldflo-dev-workflow",
+      "description": "FieldFlo Jira-ticket dev workflow orchestrator, PR review, Prisma migrations, OpenAPI sync, environment reset, and the fieldflo-* subagent team."
+    }
+  ]
+}
