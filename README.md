@@ -13,19 +13,11 @@ teammate can get it all with one install instead of copying loose files.
   - `reset-environment` — shared clean-rebuild + health-check procedure used by both orchestrators.
 - **Subagents** (`plugins/fieldflo-dev-workflow/agents/`) — all 8: `fieldflo-context-analyst`, `fieldflo-planner`, `fieldflo-architect-reviewer`, `fieldflo-implementer`, `fieldflo-mechanical-editor`, `fieldflo-test-verifier`, `fieldflo-pr-comment-composer`, `fieldflo-pr-functional-reviewer`.
 
-## What's NOT included (install manually if you want them)
+## What's NOT included
 
-`fieldflo-rock-builder`, `last-worked-on`, `omc-reference`, `payroll-*`,
-`pr-review-swarm` (deprecated, absorbed by `pr-review`), `report-builder-dev`,
-`technical-analysis`, `what-i-did` — left out on purpose per the source setup.
-`technical-analysis` is still *referenced* by `develop-fieldflo` (Step 3, optional
-path) — if it's not installed, Hard Gate #0 will flag it and ask before continuing;
-it doesn't block the rest of the workflow.
-
-Note: `update-openapi` is also already checked into `portal.fieldflo.com` itself
-at `.claude/skills/update-openapi/SKILL.md`, so anyone with that repo cloned
-already has it via git. It's bundled here too for teammates working from `hq.fieldflo.com`
-/ `FFClientDocs`, or who want it available outside that one repo checkout.
+`technical-analysis` is referenced by `develop-fieldflo` (Step 3, optional path)
+but is not bundled in this plugin — if it's not installed, Hard Gate #0 will
+flag it and ask before continuing; it doesn't block the rest of the workflow.
 
 ## Installing (teammate side)
 
