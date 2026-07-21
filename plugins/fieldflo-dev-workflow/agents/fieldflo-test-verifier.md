@@ -11,6 +11,8 @@ tools:
   - Grep
   - Glob
   - Bash
+  - mcp__chrome-devtools
+  - mcp__claude-in-chrome
 maxTurns: 20
 ---
 
