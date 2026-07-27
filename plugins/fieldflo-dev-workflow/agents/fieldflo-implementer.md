@@ -12,6 +12,8 @@ tools:
   - Grep
   - Glob
   - Bash
+  # Official SDK/framework docs before implementing against them
+  - mcp__context7
 maxTurns: 24
 ---
 

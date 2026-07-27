@@ -11,6 +11,27 @@ tools:
   - Grep
   - Glob
   - Bash
+  # Jira (read-only) — ACs are the source of truth for this review
+  - mcp__claude_ai_Atlassian__atlassianUserInfo
+  - mcp__claude_ai_Atlassian__getAccessibleAtlassianResources
+  - mcp__claude_ai_Atlassian__getJiraIssue
+  - mcp__claude_ai_Atlassian__searchJiraIssuesUsingJql
+  - mcp__claude_ai_Atlassian__getJiraIssueRemoteIssueLinks
+  - mcp__claude_ai_Atlassian__getVisibleJiraProjects
+  # Confluence (read-only) — linked technical analysis
+  - mcp__claude_ai_Atlassian__getConfluencePage
+  - mcp__claude_ai_Atlassian__searchConfluenceUsingCql
+  - mcp__claude_ai_Atlassian__getConfluencePageFooterComments
+  - mcp__claude_ai_Atlassian__getConfluencePageDescendants
+  # Slack (read-only; no user-profile lookups — PII)
+  - mcp__claude_ai_Slack__slack_search_public_and_private
+  - mcp__claude_ai_Slack__slack_search_channels
+  - mcp__claude_ai_Slack__slack_read_channel
+  - mcp__claude_ai_Slack__slack_read_thread
+  # Notion (read-only)
+  - mcp__notion__notion-search
+  - mcp__notion__notion-fetch
+  - mcp__notion__notion-query-data-sources
 maxTurns: 14
 ---
 

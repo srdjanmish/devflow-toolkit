@@ -4,6 +4,7 @@ description: Use for exact, low-risk mechanical edits after a plan exists: copy 
 model: haiku
 permissionMode: acceptEdits
 tools:
+  # No MCP access by design — mechanical edits need no external context.
   - Read
   - Write
   - Edit

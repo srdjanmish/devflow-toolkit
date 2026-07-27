@@ -11,6 +11,21 @@ tools:
   - Grep
   - Glob
   - Bash
+  # Jira (read-only) — AC / merge-readiness verification
+  - mcp__claude_ai_Atlassian__atlassianUserInfo
+  - mcp__claude_ai_Atlassian__getAccessibleAtlassianResources
+  - mcp__claude_ai_Atlassian__getJiraIssue
+  - mcp__claude_ai_Atlassian__searchJiraIssuesUsingJql
+  - mcp__claude_ai_Atlassian__getJiraIssueRemoteIssueLinks
+  - mcp__claude_ai_Atlassian__getVisibleJiraProjects
+  # API-contract / framework verification
+  - mcp__context7
+  # Sentry (read-only) — production error context; no update_issue, no execute_sentry_tool
+  - mcp__sentry__find_organizations
+  - mcp__sentry__find_projects
+  - mcp__sentry__search_issues
+  - mcp__sentry__search_events
+  - mcp__sentry__get_sentry_resource
 maxTurns: 14
 ---
 

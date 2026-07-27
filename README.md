@@ -10,8 +10,8 @@ teammate can get it all with one install instead of copying loose files.
   - `pr-review` — orchestrated PR review from a Jira ticket, triaged by size × risk.
   - `prisma-migrations` — the Prisma schema/migration workflow (never raw SQL).
   - `update-openapi` — keeps `frontend/apidocs/*.yaml` and the generated TS client in sync with API changes.
-  - `reset-environment` — shared clean-rebuild + health-check procedure used by both orchestrators.
-- **Subagents** (`plugins/fieldflo-dev-workflow/agents/`) — all 8: `fieldflo-context-analyst`, `fieldflo-planner`, `fieldflo-architect-reviewer`, `fieldflo-implementer`, `fieldflo-mechanical-editor`, `fieldflo-test-verifier`, `fieldflo-pr-comment-composer`, `fieldflo-pr-functional-reviewer`.
+  - `reset-environment` — shared clean-rebuild procedure used by both orchestrators: rebuild, **wait for `db_migrations` to finish** (one-shot container; a failed migration holds instead of exiting), then health-check the index for a 200.
+- **Subagents** (`plugins/fieldflo-dev-workflow/agents/`) — all 8: `fieldflo-context-analyst`, `fieldflo-planner`, `fieldflo-architect-reviewer`, `fieldflo-implementer`, `fieldflo-mechanical-editor`, `fieldflo-test-verifier`, `fieldflo-pr-comment-composer`, `fieldflo-pr-functional-reviewer`. Each one carries **least-privilege, read-only MCP access scoped to its role** (see the 1.1.0 changelog entry) — Jira/Confluence/Slack/Notion for the context and review agents, `context7` where official docs matter, `mysql_query` for DB inspection, browser MCPs for the test verifier, and deliberately none for the mechanical editor and comment composer. No write tool of any connector is granted to any agent.
 
 ## What's NOT included
 

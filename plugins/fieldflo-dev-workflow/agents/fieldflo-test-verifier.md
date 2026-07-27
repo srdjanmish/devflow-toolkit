@@ -13,6 +13,8 @@ tools:
   - Bash
   - mcp__chrome-devtools
   - mcp__claude-in-chrome
+  # DB verification (MCP is configured read-only; test-data generation goes via Docker CLI)
+  - mcp__mcp_server_mysql__mysql_query
 maxTurns: 20
 ---
 

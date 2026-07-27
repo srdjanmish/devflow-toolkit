@@ -11,6 +11,10 @@ tools:
   - Grep
   - Glob
   - Bash
+  # Official SDK/framework docs before planning an integration
+  - mcp__context7
+  # Schema/table inspection (MCP is configured read-only; seeding goes via Docker CLI)
+  - mcp__mcp_server_mysql__mysql_query
 maxTurns: 16
 ---
 

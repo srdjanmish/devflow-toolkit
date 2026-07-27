@@ -5,6 +5,8 @@ model: sonnet
 effort: high
 permissionMode: plan
 tools:
+  # No MCP access by design — this agent only formats findings and prepares the
+  # `gh api` payload (GitHub goes through the gh CLI in Bash, never an MCP).
   - Read
   - Write
   - Edit
