@@ -140,7 +140,7 @@ Field meaning:
 Only these gates should stop the workflow for user input:
 
 0. Dependency check at the very start of the run, before Step 0 — see "Hard Gate #0 — Dependency Check" below. Only asks if something required is missing or unavailable in the current session.
-1. Jira status transition when ticket is `Ready for Dev` is imperative.
+1. Jira status transition when ticket is `Ready for Dev` **or** `To Do` is imperative.
 2. Branch creation or destructive git action is imperative.
 3. Missing ticket description, or ACs that exist but aren't viable (not concrete/testable) — offer the `/technical-analysis` skill vs. a lightweight local draft (see Step 3).
 4. Pre-implementation approval.
@@ -237,15 +237,17 @@ If existing files are present:
 
 Use Jira MCP to read the ticket status before branching.
 
-If status is `Ready for Dev`, in any case, always ask exactly:
+If status is `Ready for Dev` **or** `To Do`, in any case, always ask exactly (substituting `{CURRENT_STATUS}` with the status actually read from Jira — `Ready for Dev` or `To Do`):
 
 ```text
-The Jira ticket {TICKET_ID} is in status Ready for Dev. Should I transition it to In Progress before proceeding? (yes / no)
+The Jira ticket {TICKET_ID} is in status {CURRENT_STATUS}. Should I transition it to In Progress before proceeding? (yes / no)
 ```
 
 - `yes`: transition to `In Progress`, then continue.
 - `no`: continue without changing Jira.
 - anything else: re-ask the same yes/no question.
+
+Match the status name case-insensitively and ignoring separator/spacing variants (`Ready For Dev`, `Ready for Dev`, `To Do`, `TO DO`) — Jira board configs differ.
 
 If status is anything else, continue without transition.
 

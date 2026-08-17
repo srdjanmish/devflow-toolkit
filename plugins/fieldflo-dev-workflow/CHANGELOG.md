@@ -2,6 +2,12 @@
 
 All notable changes to the `fieldflo-dev-workflow` plugin are documented in this file.
 
+## [1.1.1] - 2026-08-17
+
+### Changed
+- `develop-fieldflo`: **the Step 1.1 status-transition gate now fires for `To Do` as well as `Ready for Dev`.** Previously a ticket sitting in `To Do` fell into the "anything else → continue without transition" branch, so the run branched and implemented while Jira still showed the ticket as untouched — the move to `In Progress` only happened if the user noticed and asked for it by hand. Both statuses now mean the same thing for this workflow: work is starting, so offer the transition. Hard Gate #1 is reworded to match.
+- `develop-fieldflo`: the gate's question no longer hardcodes the status name. It interpolates `{CURRENT_STATUS}` from what was actually read via the Jira MCP, so a `To Do` ticket isn't asked about as though it were `Ready for Dev`. Status matching is also specified as case-insensitive and tolerant of spacing/separator variants (`Ready For Dev` / `Ready for Dev` / `To Do` / `TO DO`), since board configurations differ on the exact rendering.
+
 ## [1.1.0] - 2026-07-27
 
 ### Added
