@@ -10,9 +10,9 @@ effort: high
 
 Run this skill for a FieldFlo Jira ticket from context gathering through implementation, approval-gated testing, and final review.
 
-This skill is the workflow controller. Repository rules live in `CLAUDE.md`. Model-specific execution lives in `.claude/agents/*.md`.
-
 > **Plugin scoping note.** This copy ships inside the `fieldflo-dev-workflow` plugin. Every subagent named below by its bare name (`fieldflo-context-analyst`, `fieldflo-planner`, `fieldflo-architect-reviewer`, `fieldflo-implementer`, `fieldflo-mechanical-editor`, `fieldflo-test-verifier`) must be invoked with the fully scoped `subagent_type`: `fieldflo-dev-workflow:<agent-name>` (e.g. `fieldflo-dev-workflow:fieldflo-planner`). Likewise, invoke the sibling `reset-environment` skill in its scoped form (`fieldflo-dev-workflow:reset-environment`). If a bare-name invocation fails to resolve, retry with the scoped form — do not treat that failure as the dependency being absent. `technical-analysis` (Step 3) is **not** bundled in this plugin — it stays a bare-name reference and is exactly what Hard Gate #0 below checks for.
+
+This skill is the workflow controller. Repository rules live in `CLAUDE.md`. Model-specific execution lives in `.claude/agents/*.md`.
 
 ---
 
@@ -52,6 +52,8 @@ Changes.md
 TestReport.md
 SubagentLog.md
 ```
+
+A UI ticket also keeps its temporary Playwright spec and `playwright.tmp.config.ts` here (Step 11) — that is deliberate, so `tests/aqa/` is never touched.
 
 Do not store secrets, tokens, credentials, or raw PII in these files.
 
@@ -178,12 +180,31 @@ Confirm each capability is reachable through a connected MCP (match by what the 
 - **Slack** — mandatory, Step 2.
 - **Notion** — mandatory, Step 2.
 - **MySQL** — preferred for Step 10; Docker CLI is an existing documented fallback, so treat this one as **degraded, not blocking** if absent.
-- **Chrome DevTools / browser automation** — mandatory for the Step 11 UI-testing requirement.
+- **Chrome DevTools / browser automation** — required for the Step 11 UI-testing requirement as the
+  **debug/selector-discovery** path (the primary path is a CLI Playwright run, which needs only
+  Node + the AQA project, not an MCP). Treat as **degraded, not blocking** if absent: a passing
+  Playwright run still verifies, but a *failing* one cannot be diagnosed in-browser — say so
+  rather than silently downgrading the evidence.
 
 Note the limit of this check: a tool being listed means the MCP is *connected/exposed*, not that it's *authenticated*. A Jira MCP can appear available and still fail on first real call if the session isn't logged in — this gate catches "missing," not "misconfigured." Treat an auth failure hit later in the run the same as a missing dependency would have been treated here (flag it, don't silently degrade).
 
 ### 4. Required CLI (only when a PR is in scope)
 - `gh` on PATH — needed whenever `pr_id` is provided or a PR is found (Step 1.2, Step 2.5). Check with `gh --version` only when a PR is actually in scope for this run; skip the check otherwise.
+
+### 5. Playwright runner (only when the ticket has a UI surface)
+
+Step 11 verifies UI through a CLI Playwright run, which needs the AQA project's own dependencies.
+`tests/aqa/node_modules` is **gitignored and frequently absent on a fresh machine**. Check only
+when the ticket actually touches UI; otherwise skip:
+
+```bash
+node --version
+[ -x tests/aqa/node_modules/.bin/playwright ] && echo ok || echo "missing — run: cd tests/aqa && npm install"
+```
+
+Treat as **degraded, not blocking**: it is a one-time `npm install` (plus
+`npx playwright install chromium` for the browser binary), not a missing capability. Install it
+when reached rather than failing the gate — but say so, because the first run pays that cost.
 
 ### Gate behavior
 
@@ -427,7 +448,7 @@ For the approved viable comments, delegate to `fieldflo-implementer` (or `fieldf
 
 ### 2.5.4 — Post-resolution testing gate
 
-After the viable comments are resolved, do **not** silently finish. Route into the normal **Step 9 (Post-Code Testing Approval Gate)** → Steps 10–11: ask the user whether to test, and run it if approved. If any resolved comment touched UI code, the mandatory UI-testing requirement in Step 11 applies — a UI change cannot be marked verified without browser exercise. Then produce the Step 13 final output, including the Subagent Usage ledger for the viability + resolution delegations.
+After the viable comments are resolved, do **not** silently finish. Route into the normal **Step 9 (Post-Code Testing Approval Gate)** → Steps 10–11: ask the user whether to test, and run it if approved. If any resolved comment touched UI code, the mandatory UI-testing requirement in Step 11 applies — a UI change cannot be marked verified without an actual UI run (Playwright-first, per Step 11). Then produce the Step 13 final output, including the Subagent Usage ledger for the viability + resolution delegations.
 
 ---
 
@@ -710,11 +731,27 @@ Before functional testing:
 
 Use `fieldflo-test-verifier`.
 
-**UI changes MUST be tested in the browser (mandatory).** If the change touches any UI element (`application/views/`, view templates, `.js`, `.css`, rendered output, or user-facing behavior), a UI test is **required** — the ticket **cannot be verified** without it:
+**UI changes MUST be exercised for real (mandatory).** If the change touches any UI element (`application/views/`, view templates, `.js`, `.css`, rendered output, or user-facing behavior), a UI test is **required** — the ticket **cannot be verified** without it.
 
-- Use Chrome DevTools MCP.
-- Test local portal slug, default `/dev1`.
-- Exercise the actual UI flow and verify the change is visible/working in the browser, not only in code.
+**Prefer a Playwright test run through the CLI over interactive browser automation.** Do not drive the browser one action at a time — click-by-click verification is slow, non-reproducible, and leaves no re-runnable artifact. The agent definition (`fieldflo-test-verifier.md` → "UI verification") owns the full procedure; the rules that bind this step:
+
+- **Write the temporary spec into the ticket's own work folder**, `agents/context/{ROOT_ID}/{TICKET_ID}/` — both `tmp.{TICKET_ID}.<feature>.test.ts` and its `playwright.tmp.config.ts`. This leaves `tests/aqa/` **completely untouched** and keeps the spec beside `Analysis.md` / `Changes.md` / `TestReport.md`.
+- **Retention:** specs in the ticket context folder **stay** — they are part of the ticket record. A temp spec written **anywhere else must be deleted** when the run finishes (pass or fail), and `git status` must come back clean of it. Generated artifacts (`.pw-artifacts/`, and any `playwright-report/` / `test-results/`) are always deleted, including from the context folder.
+- **Temporary specs are allowed; changing the AQA suite is not.** Do not create, edit, delete, or move any existing spec, page object, component, fixture, seed, config, or doc under `tests/aqa/` — read them freely, change none. No `qase(N, …)` id, no `@REGRESSION`/`@SMOKE`/`@SANITY` tags, no Qase PATCH (an outward-facing write the Step 9 approval does not cover). If the flow cannot be driven without changing the suite, stop and report it.
+- The temp config is **not optional** and four of its lines are load-bearing — `projects: undefined` (the committed config's folder-anchored buckets match nothing outside `tests/ui/<domain>/`, so the spec would report `0 tests in 0 files`), `tsconfig: '../../../../tests/aqa/tsconfig.json'` (without it the `@/` aliases fail and it again reports `0 tests`), `outputDir` + `reporter: [['list']]` (otherwise report dirs land at the repo root and the inherited Qase/Datadog reporters stay live), and `use: { ...base.use, headless: true }` (the base config's `headless: CONFIG.CI` is `false` locally and would open a visible Chrome window). The agent file carries the exact contents.
+- **Chrome always runs headless.** Never pass `--headed` and never set `headless: false`, not even while debugging. A failing spec is debugged from its retained trace, video and screenshot, or through the browser-MCP debug lane below.
+- Run with the Qase reporter forced off — it is **enabled by default** when `QASE_SKIP` is falsy, so an unguarded run pushes results to Qase TestOps:
+  ```bash
+  cd tests/aqa
+  # one-time, node_modules is gitignored: npm install && npx playwright install chromium
+  QASE_SKIP=true ./node_modules/.bin/playwright test \
+    --config=../../agents/context/{ROOT_ID}/{TICKET_ID}/playwright.tmp.config.ts \
+    --reporter=list --workers=1 --retries=0
+  ```
+  Use `./node_modules/.bin/playwright`, not bare `npx playwright` — `npx` may resolve a cached global Playwright that dies with `MODULE_NOT_FOUND` on `src/config.ts`.
+- Test local portal slug, default `/dev1`. Never production or sandbox URLs.
+- **Use Chrome DevTools MCP only when the Playwright test fails** — to inspect DOM, console, network, or visual state — or to discover selectors, debug unexpected state, do visual verification, or read console/network errors. Then fix and re-run Playwright.
+- **When you are in the browser, batch.** No click-by-click there either: `take_snapshot` (not `take_screenshot`) for uid handles, `fill_form` to set many fields in one call, `evaluate_script` to assert state without touching the UI, and `browser_batch` (claude-in-chrome) to run a whole navigate→click→type→screenshot sequence in one round trip. Never trigger a JS dialog — it freezes the extension.
 - If the UI genuinely cannot be exercised locally (e.g. feature-flag gated off, no test-data path), do **not** mark the UI verified — record the reason and flag the affected AC as **not UI-verified** so it is never silently treated as passing.
 
 Run relevant checks:
@@ -807,6 +844,6 @@ For `## Subagent Usage`, **print the full result inline in the final output** (n
 
 Durations are wall-clock (include orchestration overhead) — label them as such. Do not include token or cost figures — they are not reliably available per subagent (see Subagent Usage Tracking).
 
-Do not claim completion unless all applicable ACs have been implemented and either tested or clearly marked as not tested with the reason. Any AC covering UI behavior requires browser verification (Step 11) to count as tested — a UI change with no browser exercise must be reported as **not verified**, never as passing.
+Do not claim completion unless all applicable ACs have been implemented and either tested or clearly marked as not tested with the reason. Any AC covering UI behavior requires an actual UI run (Step 11 — Playwright-first) to count as tested — a UI change with no such run must be reported as **not verified**, never as passing.
 
 Do not commit or push while producing this output. Leave all changes in the working tree. If the work is ready to commit, present the diff summary and ask the user for explicit approval before running `git commit` or `git push` (Hard Gate #7). Only after that approval may a commit/push be made.

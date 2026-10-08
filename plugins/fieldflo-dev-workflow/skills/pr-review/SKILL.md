@@ -82,7 +82,7 @@ Do not store secrets, tokens, credentials, or raw PII in these files.
 | Context | `fieldflo-context-analyst` | Jira/Slack/Notion/PR synthesis, AC extraction. |
 | Functional | `fieldflo-pr-functional-reviewer` | AC-by-AC coverage + functional defects on the finished diff. |
 | Architecture / security | `fieldflo-architect-reviewer` | Code quality, **security (any violation = blocker)**, DB/Prisma, tenant, cross-system, regression, sensitive-data. Also the **combined** reviewer for Small PRs (add AC coverage to its prompt). |
-| UI / behavioural | `fieldflo-test-verifier` | Chrome DevTools validation + test-data verification. |
+| UI / behavioural | `fieldflo-test-verifier` | Playwright-first UI verification (temporary spec, run via CLI) + test-data verification. Browser MCP only to debug a failure. |
 | Comments | `fieldflo-pr-comment-composer` | Dedup findings → casual-human inline comments + gh payload (never submits). |
 
 ### Profiles (Step 2 selects exactly one)
@@ -116,7 +116,8 @@ Do not store secrets, tokens, credentials, or raw PII in these files.
 
 A UI lane is warranted only if the diff changes `application/views/`, view templates, `.js`, or `.css`.
 
-- **If there is a UI surface and it is locally testable, the UI lane is MANDATORY** — a UI change cannot be marked verified/approved without actual browser exercise (Chrome DevTools MCP). Do not skip it to save tokens.
+- **If there is a UI surface and it is locally testable, the UI lane is MANDATORY** — a UI change cannot be marked verified/approved without an actual UI run. Do not skip it to save tokens.
+- **The UI lane runs Playwright, not click-by-click browser automation.** The agent writes a *temporary* spec plus a throwaway `playwright.tmp.config.ts` into the ticket's own work folder (`agents/context/{ROOT_ID}/{TICKET_ID}/`, never `tests/aqa/`) and runs it via CLI, with Chrome always headless (never `--headed`). Temporary specs are allowed; changing the committed AQA suite is not — nothing existing under `tests/aqa/` is created, edited, deleted, or moved, and a temp spec is never tagged, committed to the suite, or Qase-synced. Specs in the context folder stay as ticket record; anything written elsewhere is deleted when the run finishes, and generated artifacts always are. Chrome DevTools MCP is the **debug/selector-discovery** path, used only when the spec fails; when in the browser, batch (`take_snapshot` → `fill_form` → `evaluate_script`, or `browser_batch`) rather than acting one step at a time. The agent definition owns the procedure.
 - **Skip the UI lane (no agent) only if** there is no UI surface, or the surface genuinely cannot be exercised locally (feature-flag gated off, no test-data path). Record the skip reason — do not spawn an agent that can only report "couldn't test." In that case the UI is **not verified**: the verdict must reflect that (see Step 7), not silently pass.
 
 ---
@@ -169,6 +170,7 @@ Format:
 4. **Material blocker** — ambiguity/conflict in scope, security, tenant isolation, schema, API contract, data integrity, or destructive operation.
 5. **Posting to GitHub.** Never run `gh pr review`, `gh pr comment`, or any `gh api ... POST`/PATCH against the PR until the user explicitly approves that action. Preparing comments locally is allowed; publishing is always gated.
 6. **Environment reset offer** (see "Environment Reset Gate" below) — ALWAYS ask before any review lane that **executes the running app** (a UI lane or functional verification against the live environment). Asking is mandatory; running the reset only happens if the user says yes. Pure static review (no app execution) does not need it.
+7. **Jira defect classification** (see Step 8b). On a defect-type ticket (`Bug`, `Defect`, `Release Defect`), the run may not close out until `Component`, `Found By`, `Root Cause Category` and `Escape Point` are filled. Proposing values for the empty fields is mandatory. Writing them to Jira happens only on an explicit `set` for those exact values.
 
 The assignment check (Step 1) runs automatically and never blocks. This skill is **read-only w.r.t. the codebase and VCS** — it reviews; it never edits application code, commits, pushes, or rewrites git history. (The Environment Reset Gate's `git checkout` steps are existing-branch checkouts only — no branch creation/commit/push — so they're compatible with this read-only posture; `docker compose down -v` is local-data only, not VCS.)
 
@@ -288,11 +290,11 @@ Write `PR_Review.md`: Summary (ticket, PR, branch, base, profile, status, re-rev
 
 ## Step 7 — Severity Classification
 
-- ✅ **Approved** — no issues, all ACs covered, security clean. **A PR with UI changes may be Approved only if the UI was actually exercised in the browser** (the UI lane ran) — never on static grounds alone.
+- ✅ **Approved** — no issues, all ACs covered, security clean. **A PR with UI changes may be Approved only if the UI was actually exercised** (the UI lane ran) — never on static grounds alone.
 - ⚠️ **Needs Changes** — non-blocking issues only.
 - ❌ **Blocked** — broken functionality, missing AC coverage, any security vulnerability, raw/non-Prisma DB change, Prisma out of sync, data leakage / PII violation, or cross-tenant isolation breach.
 
-**UI verification rule:** a UI change is **not verified** until it has been exercised in the browser. If the UI lane ran, cite the evidence. If it was skipped because the surface wasn't locally testable, the UI portion is **not** ✅ Approved — report it as ⚠️ Needs Changes / explicitly-unverified with the reason, never a silent pass.
+**UI verification rule:** a UI change is **not verified** until it has actually been run (Playwright-first, per the UI lane). If the UI lane ran, cite the evidence. If it was skipped because the surface wasn't locally testable, the UI portion is **not** ✅ Approved — report it as ⚠️ Needs Changes / explicitly-unverified with the reason, never a silent pass.
 
 ---
 
@@ -308,9 +310,69 @@ Only on `post` submit a single PR review (`gh api repos/FieldFlo/portal.fieldflo
 
 ---
 
+## Step 8b — Jira Defect Classification (HARD GATE #7)
+
+Runs after Step 8's gate is settled (posted, revised, or declined), right before the final output. It also runs when the review ends early, for example when the PR is already merged or the user declines the review. The gate itself only asks a question, so offering it never writes anything.
+
+**Scope:** defect-type tickets only (`Bug`, `Defect`, `Release Defect`). For any other issue type, skip this step and say so in one line.
+
+### 8b.1 — Read the current values and the allowed options
+
+Fetch the ticket with `getJiraIssue`, `expand: "editmeta"`, and `fields: ["issuetype", "components", "customfield_11064", "customfield_11065", "customfield_11066"]`. If the response overflows, `jq` the saved file. Read the allowed options from `editmeta` every time and never from memory, because the option lists change.
+
+| Field | Jira id | Write shape |
+|---|---|---|
+| Component | `components` | `[{"id": "<component id>"}]` |
+| Found By | `customfield_11064` | `[{"value": "<option>"}]` |
+| Root Cause Category | `customfield_11065` | `[{"value": "<option>"}]` |
+| Escape Point | `customfield_11066` | `[{"value": "<option>"}]` |
+
+Set `components` **by id**. A name-based payload (`{"name": …}`) is rejected with `You do not have permission to create new components` even when the name matches an existing component exactly (observed on CSE-8798).
+
+If all four fields are already filled, report their values and continue. Never overwrite a filled field. If a filled value looks wrong, say so and leave it unchanged unless the user asks for the change.
+
+### 8b.2 — Derive a proposal for each empty field from evidence
+
+- **Found By** (who first surfaced the defect):
+  - `Customer`: the ticket cites an Intercom conversation, a client tenant/portal URL, or a support reporter, or the issue happened in production.
+  - `QA`: found during QA or release testing. This is typical for `Release Defect` tickets and QA-parented tickets.
+  - `Developer`, `Automation` (AQA run or automated monitoring) or `Other` when the evidence says so.
+- **Component:** the module where the fix lands. Map the changed application files to the closest, most specific component. For example, `views/forms/pdf/custom_form.php` maps to `Project / Custom Forms`, not `Project / Main Module`. Use one component unless the fix truly spans two.
+- **Root Cause Category:** decide from the fix plus `git blame` / `git log` on the lines it changed.
+  - `Regression` **only** when a recent, identifiable change broke behavior that worked before. Name that commit.
+  - `Coding`: a latent logic flaw in long-standing code.
+  - `Data`: the code is correct and unexpected tenant data triggered the failure.
+  - `Validation`: input validation is missing.
+  - `Requirements`: the code was built as specified and the spec was wrong or missing.
+  - `Config`, `Design`, `Environment`, `Integration`, `Timezone`, `Not a Defect` and `Unknown` as the evidence dictates.
+- **Escape Point:** the earliest stage that should reasonably have caught the defect.
+  - `Dev Test`: an edge or boundary case of the code's own purpose that a developer could reproduce.
+  - `Code Review`: the flaw is visible in the original diff.
+  - `Release Testing`: a normal QA flow would have hit it.
+  - `Automated Regression`: an area the AQA suite covers.
+  - `Requirements`: the gap was in the spec.
+  - `Not Catchable`: it depends on production-only data or conditions that no reasonable pre-release test would hit.
+
+Each proposal carries a one-line rationale that cites its evidence (ticket source, file path, commit hash). When two options are close, name the runner-up and say why you rejected it.
+
+### 8b.3 — Gate
+
+Show the proposal table (field · proposed value · why) and ask exactly:
+
+```text
+Should I set these classification fields on {TICKET_ID}? (Reply `set` to write them, or give corrections.)
+```
+
+- Only `set`, or an equally explicit yes, authorizes the write. Call `editJiraIssue` with only the approved fields, then re-read the ticket to confirm the values landed. A rejected call writes nothing, so fix the payload and retry before reporting.
+- If the user gives corrections, revise the proposal and ask again.
+- If the user declines, write nothing. Record "Jira classification: not set (declined)" in `PR_Review.md` and in the final output.
+- Approval covers these four fields on this ticket only. It never extends to other fields (e.g. `Root Cause Notes`), to status transitions, to comments, or to other tickets.
+
+---
+
 ## Step 9 — Final Output
 
-Return: Status · Top Issues · AC Coverage · Security Review · Cross-System/Regression Risks · Report Path · Inline Comments (count; staged/posted) · **Subagent Usage**.
+Return: Status · Top Issues · AC Coverage · Security Review · Cross-System/Regression Risks · Report Path · Inline Comments (count; staged/posted) · Jira Classification (set / declined / n/a) · **Subagent Usage**.
 
 `## Subagent Usage` prints inline: the **chosen profile + rationale**, the full ledger from `SubagentLog.md` (with `Start`/`End`/`Duration` and a **Total** row), then a short summary — total invocations, per-agent and per-model counts, total wall-clock + longest delegation, escalations/re-routes, deviations from the profile defaults. Durations are wall-clock (label as such); no token/cost figures.
 
@@ -330,11 +392,12 @@ If the review surfaces a generalizable lesson (recurring pitfall, missed convent
 - **Triage from the 3-dot diff only** — never the 2-dot diff (base-ahead files misclassify the PR).
 - **Ignore the `agents/` folder for review** — per-ticket work-log/context docs, not product code: excluded from triage signals, AC validation, code/security review, and inline comments.
 - **Static checks scoped to changed files** at every tier — repo-wide `make` suites only for broad diffs or on request.
-- **UI changes require browser verification** — run the UI lane whenever the surface is testable (mandatory); skip only when there's no UI surface or it isn't locally testable, and then report the UI as **not verified** (never a silent pass).
+- **UI changes require an actual UI run** — run the UI lane whenever the surface is testable (mandatory); skip only when there's no UI surface or it isn't locally testable, and then report the UI as **not verified** (never a silent pass).
 - **Lane prompts write output in one pass** — avoid draft/finalize round-trips.
 - **Assignment first; never assume prior context; redo from scratch if previously reviewed.**
 - **Always check out the PR branch locally.** Jira is the source of truth; validate every AC.
 - **Security violations / raw-SQL DB changes are blockers.**
 - **Never post to GitHub without explicit `post`** (Hard Gate #5). Never commit/push/rewrite history.
+- **Defect tickets close with Jira classification** (Hard Gate #7): propose `Component`, `Found By`, `Root Cause Category` and `Escape Point` for any empty field, and write them only on `set`.
 - **DB access only via MySQL MCP or Docker CLI.** Never store secrets/tokens/PII/credentials in any output.
 - **Don't fabricate findings** — an empty lane is a valid result.

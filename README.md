@@ -7,11 +7,40 @@ teammate can get it all with one install instead of copying loose files.
 
 - **Skills** (`plugins/fieldflo-dev-workflow/skills/`)
   - `develop-fieldflo` — the ticket orchestrator (context → plan → approval → implement → test → review). Now starts every run with a **Hard Gate #0 dependency check** — before Step 0 it verifies the required subagents, skills, and MCP-backed capabilities are actually available in the session, and if anything's missing it stops and asks `Do you want to continue, work will be limited? (yes / no)` before proceeding.
-  - `pr-review` — orchestrated PR review from a Jira ticket, triaged by size × risk.
+  - `pr-review` — orchestrated PR review from a Jira ticket, triaged by size × risk. On defect tickets it closes with a gated Jira classification step: it proposes `Component`, `Found By`, `Root Cause Category` and `Escape Point`, and writes them only on `set`.
   - `prisma-migrations` — the Prisma schema/migration workflow (never raw SQL).
   - `update-openapi` — keeps `frontend/apidocs/*.yaml` and the generated TS client in sync with API changes.
   - `reset-environment` — shared clean-rebuild procedure used by both orchestrators: rebuild, **wait for `db_migrations` to finish** (one-shot container; a failed migration holds instead of exiting), then health-check the index for a 200.
-- **Subagents** (`plugins/fieldflo-dev-workflow/agents/`) — all 8: `fieldflo-context-analyst`, `fieldflo-planner`, `fieldflo-architect-reviewer`, `fieldflo-implementer`, `fieldflo-mechanical-editor`, `fieldflo-test-verifier`, `fieldflo-pr-comment-composer`, `fieldflo-pr-functional-reviewer`. Each one carries **least-privilege, read-only MCP access scoped to its role** (see the 1.1.0 changelog entry) — Jira/Confluence/Slack/Notion for the context and review agents, `context7` where official docs matter, `mysql_query` for DB inspection, browser MCPs for the test verifier, and deliberately none for the mechanical editor and comment composer. No write tool of any connector is granted to any agent.
+
+### UI verification is Playwright-first (1.2.0)
+
+Both orchestrators verify UI through a **CLI Playwright run**, not click-by-click browser
+automation. `fieldflo-test-verifier` writes a *temporary* spec plus a throwaway
+`playwright.tmp.config.ts` **into the ticket's own work folder**
+(`agents/context/{ROOT_ID}/{TICKET_ID}/`), so `tests/aqa/` is never touched at all.
+
+- **Temporary specs are allowed; changing the committed AQA suite is not.** Nothing existing
+  under `tests/aqa/` is created, edited, deleted, or moved, and a temp spec never gets a
+  `qase(N)` id, a `@REGRESSION`/`@SMOKE`/`@SANITY` tag, or a Qase PATCH.
+- **Retention:** specs in the context folder **stay** as part of the ticket record. A temp spec
+  written anywhere else is **deleted** when the run finishes; generated artifacts always are.
+- **Always headless (1.3.0).** The committed AQA config sets `headless: CONFIG.CI`, which is
+  `false` locally. The temp config therefore overrides it with `use: { ...base.use, headless: true }`,
+  and `--headed` is never used. A failing spec is debugged from its retained trace, video and
+  screenshot, or through the browser MCP.
+- Chrome DevTools MCP is reserved for debugging a failing spec and for selector discovery, and
+  even there the agent is told to batch (`take_snapshot` → `fill_form` → `evaluate_script`, or
+  `browser_batch`).
+
+`Portal/CLAUDE.md`'s standing "don't touch AQA/Playwright" rule carries a matching exception, so
+the repo rule and the plugin no longer contradict each other.
+
+**Requires** the AQA project's dependencies, which are gitignored and often absent on a fresh
+machine — one-time, and Hard Gate #0 now checks for it whenever the ticket has a UI surface:
+
+```bash
+cd tests/aqa && npm install && npx playwright install chromium
+```
 
 ## What's NOT included
 

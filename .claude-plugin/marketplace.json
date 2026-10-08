@@ -8,7 +8,7 @@
     {
       "name": "fieldflo-dev-workflow",
       "source": "./plugins/fieldflo-dev-workflow",
-      "description": "FieldFlo Jira-ticket dev workflow orchestrator, PR review, Prisma migrations, OpenAPI sync, environment reset, and the fieldflo-* subagent team."
+      "description": "FieldFlo Jira-ticket dev workflow orchestrator, PR review with Playwright-first UI verification, Prisma migrations, OpenAPI sync, environment reset, and the fieldflo-* subagent team."
     }
   ]
 }
