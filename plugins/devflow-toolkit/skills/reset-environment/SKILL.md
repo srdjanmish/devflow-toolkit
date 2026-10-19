@@ -1,11 +1,11 @@
 ---
 name: reset-environment
-description: Reset the local FieldFlo Docker environment to a known-good state (clean rebuild), wait for db_migrations to finish applying migrations, and only then verify the app actually serves — index must return HTTP 200 — remediating with composer install and then root-cause investigation if it does not. Invoked by develop-fieldflo and pr-review at their Environment Reset Gates.
+description: Reset the local DevFlow Docker environment to a known-good state (clean rebuild), wait for db_migrations to finish applying migrations, and only then verify the app actually serves — index must return HTTP 200 — remediating with composer install and then root-cause investigation if it does not. Invoked by develop-ticket and pr-review at their Environment Reset Gates.
 argument-hint: "base_branch=<BRANCH> return_branch=<BRANCH> [health_url=<URL>]"
 model: sonnet
 effort: high
 # Docker + curl only — no MCP is reachable during an environment reset.
-# NOTE: this skill is invoked mid-run by develop-fieldflo and pr-review, and a skill's
+# NOTE: this skill is invoked mid-run by develop-ticket and pr-review, and a skill's
 # allowed-tools also applies to what it invokes. The orchestration primitives below
 # (Task/Agent/Skill/AskUserQuestion) are therefore kept so the restriction cannot clamp
 # the calling workflow — the restriction that matters here is "no MCP", not "no tools".
@@ -22,11 +22,20 @@ allowed-tools:
   - AskUserQuestion
 ---
 
+> **Target project configuration.** Read the target repository's `CLAUDE.md` /
+> `AGENTS.md` first. Resolve GitHub `{owner}/{repo}` from its remote or selected PR,
+> the Jira account from the authenticated connector, and the local health URL from
+> project configuration (ask if missing; never substitute a production URL).
+> Commands and paths below describe a reference PHP/CodeIgniter + Prisma + Docker
+> layout. Verify services, schemas, base branch and Playwright paths against the
+> target project before executing; use its documented equivalents where different.
+
+
 # Skill: Reset Local Environment (clean rebuild + health verification)
 
-Shared procedure for putting the local Docker environment into a known-good state **and confirming it actually serves** before development or app-executing tests run. `develop-fieldflo` and `pr-review` invoke this at their Environment Reset Gates instead of duplicating the steps.
+Shared procedure for putting the local Docker environment into a known-good state **and confirming it actually serves** before development or app-executing tests run. `develop-ticket` and `pr-review` invoke this at their Environment Reset Gates instead of duplicating the steps.
 
-> **Plugin scoping note.** This copy ships inside the `fieldflo-dev-workflow` plugin. The `prisma-migrations` skill referenced below (root-cause step, "DB not migrated / empty") is a sibling in this same plugin — invoke it in its scoped form (`fieldflo-dev-workflow:prisma-migrations`) if the bare name doesn't resolve.
+> **Plugin scoping note.** This copy ships inside the `devflow-toolkit` plugin. The `prisma-migrations` skill referenced below (root-cause step, "DB not migrated / empty") is a sibling in this same plugin — invoke it in its scoped form (`devflow-toolkit:prisma-migrations`) if the bare name doesn't resolve.
 
 ---
 
@@ -34,7 +43,7 @@ Shared procedure for putting the local Docker environment into a known-good stat
 
 - `base_branch` — the branch to rebuild from (the ticket/PR base: a release branch if one exists, else `develop`).
 - `return_branch` — the branch to return to after the reset (the ticket branch, or the PR branch).
-- `health_url` — optional. The URL to health-check. Default: `https://portal.fieldflo.dev/dev1` (local portal, default dev slug). The caller may override with the slug/URL relevant to its work.
+- `health_url` — optional. The URL to health-check. Resolve from the target repository configuration; ask if missing. There is no built-in default.
 
 ---
 

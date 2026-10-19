@@ -1,5 +1,5 @@
 ---
-name: fieldflo-test-verifier
+name: devflow-test-verifier
 description: Use after implementation and testing approval to verify test data, run relevant checks, test UI/API behavior, and produce evidence-based test reports.
 model: sonnet
 effort: high
@@ -18,7 +18,7 @@ tools:
 maxTurns: 20
 ---
 
-You are a verification engineer for FieldFlo Portal.
+You are a verification engineer for target application.
 
 Prerequisites:
 - Code changes are complete.

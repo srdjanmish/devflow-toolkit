@@ -1,5 +1,5 @@
 ---
-name: fieldflo-planner
+name: devflow-planner
 description: Use after context analysis to inspect the codebase, map affected files, validate ACs, and create an implementation plan.
 model: sonnet
 effort: high
@@ -46,7 +46,7 @@ Planning output in `Changes.md`:
 ## Test Plan
 ## Rollback / Risk Notes
 
-Escalate to `fieldflo-architect-reviewer` if the plan involves:
+Escalate to `devflow-architect-reviewer` if the plan involves:
 - schema/migrations
 - auth/permissions
 - tenant isolation

@@ -1,7 +1,16 @@
 ---
 name: prisma-migrations
-description: Prisma schema/migration workflow for FieldFlo's master/client/HQ databases — edit the schema, generate the migration via Docker, review the generated SQL, then deploy. Use whenever a task requires a database schema change; never write raw SQL migrations.
+description: Prisma schema/migration workflow for DevFlow's master/client/HQ databases — edit the schema, generate the migration via Docker, review the generated SQL, then deploy. Use whenever a task requires a database schema change; never write raw SQL migrations.
 ---
+
+> **Target project configuration.** Read the target repository's `CLAUDE.md` /
+> `AGENTS.md` first. Resolve GitHub `{owner}/{repo}` from its remote or selected PR,
+> the Jira account from the authenticated connector, and the local health URL from
+> project configuration (ask if missing; never substitute a production URL).
+> Commands and paths below describe a reference PHP/CodeIgniter + Prisma + Docker
+> layout. Verify services, schemas, base branch and Playwright paths against the
+> target project before executing; use its documented equivalents where different.
+
 
 # Skill: Prisma Migration
 
@@ -10,7 +19,7 @@ When a task requires a database schema change, always use Prisma — never write
 ## How migrations work in this project
 
 There are three Prisma schemas:
-- `migrations/master/schema_master.prisma` — `fieldflo_master` database (shared, e.g. cert names, companies)
+- `migrations/master/schema_master.prisma` — shared master database (shared, e.g. cert names, companies)
 - `migrations/client/schema_client.prisma` — per-company databases (e.g. certs, employees)
 - `migrations/hq/schema_hq.prisma` — HQ database
 

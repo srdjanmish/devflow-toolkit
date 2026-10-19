@@ -1,14 +1,13 @@
 {
-  "name": "fieldflo-dev-workflow-marketplace",
+  "name": "devflow-toolkit-marketplace",
   "owner": {
-    "name": "Srdjan Mis",
-    "email": "srdjan@fieldflo.com"
+    "name": "Srdjan Mis"
   },
   "plugins": [
     {
-      "name": "fieldflo-dev-workflow",
-      "source": "./plugins/fieldflo-dev-workflow",
-      "description": "FieldFlo Jira-ticket dev workflow orchestrator, PR review with Playwright-first UI verification, Prisma migrations, OpenAPI sync, environment reset, and the fieldflo-* subagent team."
+      "name": "devflow-toolkit",
+      "source": "./plugins/devflow-toolkit",
+      "description": "DevFlow Jira-ticket dev workflow orchestrator, PR review with Playwright-first UI verification, Prisma migrations, OpenAPI sync, environment reset, and the devflow-* subagent team."
     }
   ]
 }

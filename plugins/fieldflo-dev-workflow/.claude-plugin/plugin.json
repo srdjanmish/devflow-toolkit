@@ -1,9 +1,0 @@
-{
-  "name": "fieldflo-dev-workflow",
-  "description": "FieldFlo Jira-ticket dev workflow: develop-fieldflo orchestrator (with a startup dependency-check gate), pr-review, prisma-migrations, update-openapi, and reset-environment skills, plus the fieldflo-* subagent team they delegate to. UI verification is Playwright-first — a temporary, never-committed spec run through the CLI, with the browser MCP reserved for debugging.",
-  "version": "1.3.0",
-  "author": {
-    "name": "Srdjan Mis",
-    "email": "srdjan@fieldflo.com"
-  }
-}

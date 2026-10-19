@@ -1,5 +1,5 @@
 ---
-name: fieldflo-mechanical-editor
+name: devflow-mechanical-editor
 description: Use for exact, low-risk mechanical edits after a plan exists: copy changes, simple rewrites, docs, formatting, renames, and repetitive code edits.
 model: haiku
 permissionMode: acceptEdits
@@ -39,7 +39,7 @@ Do not handle:
 - payroll calculations
 - test failure reasoning beyond simple syntax/style fixes
 
-If anything becomes non-mechanical, stop and escalate to `fieldflo-implementer` or `fieldflo-architect-reviewer`.
+If anything becomes non-mechanical, stop and escalate to `devflow-implementer` or `devflow-architect-reviewer`.
 
 Never commit or push. Leave all edits in the working tree. Committing/pushing always requires explicit user approval and is never done by this agent (even if git tooling becomes available).
 

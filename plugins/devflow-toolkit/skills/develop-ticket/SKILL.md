@@ -1,16 +1,25 @@
 ---
-name: develop-fieldflo
-description: Orchestrated FieldFlo Jira ticket workflow with model routing across Opus, Sonnet, and Haiku.
+name: develop-ticket
+description: Orchestrated DevFlow Jira ticket workflow with model routing across Opus, Sonnet, and Haiku.
 argument-hint: "ticket_id=<TICKET_ID> [epic_id=<EPIC_ID>] [pr_id=<PR_ID>]"
 model: sonnet
 effort: high
 ---
 
-# Skill: Develop FieldFlo From Ticket
+> **Target project configuration.** Read the target repository's `CLAUDE.md` /
+> `AGENTS.md` first. Resolve GitHub `{owner}/{repo}` from its remote or selected PR,
+> the Jira account from the authenticated connector, and the local health URL from
+> project configuration (ask if missing; never substitute a production URL).
+> Commands and paths below describe a reference PHP/CodeIgniter + Prisma + Docker
+> layout. Verify services, schemas, base branch and Playwright paths against the
+> target project before executing; use its documented equivalents where different.
 
-Run this skill for a FieldFlo Jira ticket from context gathering through implementation, approval-gated testing, and final review.
 
-> **Plugin scoping note.** This copy ships inside the `fieldflo-dev-workflow` plugin. Every subagent named below by its bare name (`fieldflo-context-analyst`, `fieldflo-planner`, `fieldflo-architect-reviewer`, `fieldflo-implementer`, `fieldflo-mechanical-editor`, `fieldflo-test-verifier`) must be invoked with the fully scoped `subagent_type`: `fieldflo-dev-workflow:<agent-name>` (e.g. `fieldflo-dev-workflow:fieldflo-planner`). Likewise, invoke the sibling `reset-environment` skill in its scoped form (`fieldflo-dev-workflow:reset-environment`). If a bare-name invocation fails to resolve, retry with the scoped form — do not treat that failure as the dependency being absent. `technical-analysis` (Step 3) is **not** bundled in this plugin — it stays a bare-name reference and is exactly what Hard Gate #0 below checks for.
+# Skill: Develop DevFlow From Ticket
+
+Run this skill for a DevFlow Jira ticket from context gathering through implementation, approval-gated testing, and final review.
+
+> **Plugin scoping note.** This copy ships inside the `devflow-toolkit` plugin. Every subagent named below by its bare name (`devflow-context-analyst`, `devflow-planner`, `devflow-architect-reviewer`, `devflow-implementer`, `devflow-mechanical-editor`, `devflow-test-verifier`) must be invoked with the fully scoped `subagent_type`: `devflow-toolkit:<agent-name>` (e.g. `devflow-toolkit:devflow-planner`). Likewise, invoke the sibling `reset-environment` skill in its scoped form (`devflow-toolkit:reset-environment`). If a bare-name invocation fails to resolve, retry with the scoped form — do not treat that failure as the dependency being absent. `technical-analysis` (Step 3) is **not** bundled in this plugin — it stays a bare-name reference and is exactly what Hard Gate #0 below checks for.
 
 This skill is the workflow controller. Repository rules live in `CLAUDE.md`. Model-specific execution lives in `.claude/agents/*.md`.
 
@@ -30,7 +39,7 @@ Optional:
 Usage:
 
 ```text
-/develop-fieldflo ticket_id=CSE-5877 epic_id=CSE-5800 pr_id=<optional>
+/develop-ticket ticket_id=PROJ-5877 epic_id=PROJ-5800 pr_id=<optional>
 ```
 
 If `epic_id` is missing:
@@ -65,13 +74,13 @@ Use this routing unless there is a strong reason to override.
 
 | Phase | Agent | Model | Effort | Purpose |
 |---|---|---:|---:|---|
-| Context synthesis | `fieldflo-context-analyst` | Opus | xhigh | Jira/Slack/Notion/PR synthesis, AC extraction, ambiguity/risk. |
-| Planning | `fieldflo-planner` | Sonnet | high | Code inspection, affected files, implementation plan, tests. |
-| High-risk review/escalation | `fieldflo-architect-reviewer` | Opus | xhigh | DB/schema/security/API/tenant/cross-system decisions. |
-| Implementation | `fieldflo-implementer` | Sonnet | high | Normal code changes. |
-| Mechanical edits | `fieldflo-mechanical-editor` | Haiku | default | Exact low-risk rewrites, docs, formatting, simple view copy. |
-| Testing | `fieldflo-test-verifier` | Sonnet | high | Test data, browser validation, static checks, failure triage. |
-| Final review | `fieldflo-architect-reviewer` | Opus | xhigh | Merge readiness, AC/security/regression review. |
+| Context synthesis | `devflow-context-analyst` | Opus | xhigh | Jira/Slack/Notion/PR synthesis, AC extraction, ambiguity/risk. |
+| Planning | `devflow-planner` | Sonnet | high | Code inspection, affected files, implementation plan, tests. |
+| High-risk review/escalation | `devflow-architect-reviewer` | Opus | xhigh | DB/schema/security/API/tenant/cross-system decisions. |
+| Implementation | `devflow-implementer` | Sonnet | high | Normal code changes. |
+| Mechanical edits | `devflow-mechanical-editor` | Haiku | default | Exact low-risk rewrites, docs, formatting, simple view copy. |
+| Testing | `devflow-test-verifier` | Sonnet | high | Test data, browser validation, static checks, failure triage. |
+| Final review | `devflow-architect-reviewer` | Opus | xhigh | Merge readiness, AC/security/regression review. |
 
 Escalate to Opus xhigh when any of these appear:
 
@@ -121,7 +130,7 @@ Rules:
 
 | # | Step | Agent | Model / Effort | Purpose | Start | End | Duration | Outcome |
 |---|---|---|---|---|---|---|---|---|
-| 1 | Step 2 — Context | fieldflo-context-analyst | Opus / xhigh | Jira+Slack+Notion synthesis, AC extraction | 2026-06-18 09:21:04 | 2026-06-18 09:24:38 | 03:34 | success |
+| 1 | Step 2 — Context | devflow-context-analyst | Opus / xhigh | Jira+Slack+Notion synthesis, AC extraction | 2026-06-18 09:21:04 | 2026-06-18 09:24:38 | 03:34 | success |
 ```
 
 Field meaning:
@@ -162,12 +171,12 @@ Before Step 0, verify every dependency this skill relies on is actually availabl
 
 ### 1. Required subagents
 Confirm each of these is available as a subagent type in this session:
-- `fieldflo-context-analyst`
-- `fieldflo-planner`
-- `fieldflo-architect-reviewer`
-- `fieldflo-implementer`
-- `fieldflo-mechanical-editor`
-- `fieldflo-test-verifier`
+- `devflow-context-analyst`
+- `devflow-planner`
+- `devflow-architect-reviewer`
+- `devflow-implementer`
+- `devflow-mechanical-editor`
+- `devflow-test-verifier`
 
 ### 2. Required skills
 Confirm each is available as an invocable skill in this session:
@@ -215,7 +224,7 @@ when reached rather than failing the gate — but say so, because the first run 
   Do you want to continue, work will be limited? (yes / no)
   ```
 
-  - `yes`: continue, but each missing dependency degrades its dependent step(s) when reached — e.g. no Notion MCP means Step 2 skips the Notion search and says so in `Analysis.md` rather than silently treating it as "nothing found"; no `fieldflo-architect-reviewer` means high-risk work cannot get its mandatory review — flag this again loudly if the ticket turns out to need it.
+  - `yes`: continue, but each missing dependency degrades its dependent step(s) when reached — e.g. no Notion MCP means Step 2 skips the Notion search and says so in `Analysis.md` rather than silently treating it as "nothing found"; no `devflow-architect-reviewer` means high-risk work cannot get its mandatory review — flag this again loudly if the ticket turns out to need it.
   - `no`: stop the run here. Do not proceed to Step 0.
   - anything else: re-ask the same yes/no question.
 
@@ -227,7 +236,7 @@ Before you begin **code analysis** (Step 4), again before you begin **executing 
 
 - `base_branch` = the ticket base branch (a matching release branch if one exists, else `develop`) — **exception at the Step 4 invocation:** the ticket branch was just cut from base in Step 1 and has no edits yet, so at that point pass the **ticket branch itself** as `base_branch` (i.e. `base_branch == return_branch`). There is nothing to reset "to base" that the current branch doesn't already equal — this just runs a plain rebuild in place instead of swapping branches.
 - `return_branch` = the ticket branch
-- `health_url` = the local portal at the test slug (default `https://portal.fieldflo.dev/dev1`)
+- `health_url` = the local portal at the test slug (from the target repository configuration; no built-in default)
 
 This is an implicit, mandatory **ask** every run — the user opts in or out each time; asking is mandatory, the reset runs only on `yes`. After a `yes` reset the local DB/volumes are fresh — re-seed all test data/fixtures before Step 10. Do not skip the ask even if the environment "looks fine" — drift (stale containers, leftover fixtures, ephemeral in-container config edits) is exactly what this prevents. `docker compose down -v` is destructive to local data only (volumes), never to the repo, so it does not need Hard Gate #2 — the yes/no answer is the authorization.
 
@@ -313,7 +322,7 @@ If not on a ticket branch:
    ```
 
    Branch name convention: `{TICKET_ID}-{short-slug}`
-   (e.g. `CSE-6596-inspection-report-columns`). Do not append the release to the branch name — the release is the base branch, not part of the ticket branch name.
+   (e.g. `PROJ-6596-inspection-report-columns`). Do not append the release to the branch name — the release is the base branch, not part of the ticket branch name.
 
 6. On the first push, set the upstream to the ticket branch itself — never the base:
 
@@ -333,7 +342,7 @@ Never create a new branch without explicit user approval.
 
 ## Step 2 — Context Gathering
 
-Use `fieldflo-context-analyst`.
+Use `devflow-context-analyst`.
 
 Gather and summarize:
 
@@ -406,7 +415,7 @@ When triggered, do **not** jump straight into resolving the comments, and do **n
 
 ### 2.5.1 — Independent viability analysis (mandatory, before any gate)
 
-Delegate an **independent** assessment of the open feedback to `fieldflo-architect-reviewer` (Opus xhigh). The prompt must be **skeptical, not a rubber-stamp**: for each unresolved comment / requested change, judge — against the actual code, the ACs, and existing project patterns — whether the change is **actually correct and worth making** ("viable"), or whether the comment is wrong, stale, out of scope, or noise.
+Delegate an **independent** assessment of the open feedback to `devflow-architect-reviewer` (Opus xhigh). The prompt must be **skeptical, not a rubber-stamp**: for each unresolved comment / requested change, judge — against the actual code, the ACs, and existing project patterns — whether the change is **actually correct and worth making** ("viable"), or whether the comment is wrong, stale, out of scope, or noise.
 
 Record the result in `Analysis.md` under a `## PR Feedback Triage` section, one row per open comment:
 
@@ -438,7 +447,7 @@ Do not enter resolution mode without this explicit approval.
 
 ### 2.5.3 — Lightweight resolution (no re-development)
 
-For the approved viable comments, delegate to `fieldflo-implementer` (or `fieldflo-mechanical-editor` for trivial/exact edits) per the Model Routing table — no new agent or routing is introduced here. Rules:
+For the approved viable comments, delegate to `devflow-implementer` (or `devflow-mechanical-editor` for trivial/exact edits) per the Model Routing table — no new agent or routing is introduced here. Rules:
 
 1. **Reuse existing context** — the current `Analysis.md` / `Changes.md` if present; otherwise the PR comments + diff + ACs are the minimal context. Do **not** re-run Steps 3–7 (missing-description gate, full technical analysis, requirements validation, full plan) unless a comment genuinely exposes a design gap that cannot be resolved locally — in which case stop and return to normal planning.
 2. Make **only** the minimal edits each viable comment calls for. No adjacent cleanup, no scope expansion.
@@ -510,7 +519,7 @@ Do not continue past this gate until the user replies `accept` or `skip` (or, on
 
 **First apply the Environment Reset Gate** — before inspecting any code for this change, ask the user whether to reset the local Docker environment (see "Environment Reset Gate" above). At this point the ticket branch is fresh from base (Step 1, no edits yet), so the reset — if accepted — runs directly on the current branch with no base/return swap needed.
 
-Use `fieldflo-planner`.
+Use `devflow-planner`.
 
 Inspect only code needed for the ticket scope:
 
@@ -559,7 +568,7 @@ Document in `Analysis.md`:
 - performance
 ```
 
-If high-risk design is needed, use `fieldflo-architect-reviewer` before Step 5.
+If high-risk design is needed, use `devflow-architect-reviewer` before Step 5.
 
 ---
 
@@ -581,7 +590,7 @@ Stop and ask only if an AC is materially ambiguous or conflicts with other requi
 
 ## Step 6 — Implementation Plan
 
-Use `fieldflo-planner`.
+Use `devflow-planner`.
 
 Write `Changes.md`:
 
@@ -657,9 +666,9 @@ Allowed before approval:
 
 After `approved`, **first apply the Environment Reset Gate** — ask the user whether to reset the local Docker environment before you start writing/executing code (see "Environment Reset Gate" above). Then choose the implementation agent:
 
-- Use `fieldflo-implementer` for normal code changes.
-- Use `fieldflo-mechanical-editor` only for exact low-risk mechanical changes.
-- Use `fieldflo-architect-reviewer` before edits if the change became high-risk.
+- Use `devflow-implementer` for normal code changes.
+- Use `devflow-mechanical-editor` only for exact low-risk mechanical changes.
+- Use `devflow-architect-reviewer` before edits if the change became high-risk.
 
 Implementation rules:
 
@@ -715,7 +724,7 @@ Wait for approval before testing.
 
 **First apply the Environment Reset Gate** — once testing is approved (Step 9), ask the user whether to reset the local Docker environment before you start executing tests (see "Environment Reset Gate" above). If the user accepts the reset, the local DB/volumes are wiped — re-seed all required test data afterward.
 
-Use `fieldflo-test-verifier`.
+Use `devflow-test-verifier`.
 
 Before functional testing:
 
@@ -729,11 +738,11 @@ Before functional testing:
 
 ## Step 11 — Testing
 
-Use `fieldflo-test-verifier`.
+Use `devflow-test-verifier`.
 
 **UI changes MUST be exercised for real (mandatory).** If the change touches any UI element (`application/views/`, view templates, `.js`, `.css`, rendered output, or user-facing behavior), a UI test is **required** — the ticket **cannot be verified** without it.
 
-**Prefer a Playwright test run through the CLI over interactive browser automation.** Do not drive the browser one action at a time — click-by-click verification is slow, non-reproducible, and leaves no re-runnable artifact. The agent definition (`fieldflo-test-verifier.md` → "UI verification") owns the full procedure; the rules that bind this step:
+**Prefer a Playwright test run through the CLI over interactive browser automation.** Do not drive the browser one action at a time — click-by-click verification is slow, non-reproducible, and leaves no re-runnable artifact. The agent definition (`devflow-test-verifier.md` → "UI verification") owns the full procedure; the rules that bind this step:
 
 - **Write the temporary spec into the ticket's own work folder**, `agents/context/{ROOT_ID}/{TICKET_ID}/` — both `tmp.{TICKET_ID}.<feature>.test.ts` and its `playwright.tmp.config.ts`. This leaves `tests/aqa/` **completely untouched** and keeps the spec beside `Analysis.md` / `Changes.md` / `TestReport.md`.
 - **Retention:** specs in the ticket context folder **stay** — they are part of the ticket record. A temp spec written **anywhere else must be deleted** when the run finishes (pass or fail), and `git status` must come back clean of it. Generated artifacts (`.pw-artifacts/`, and any `playwright-report/` / `test-results/`) are always deleted, including from the context folder.
@@ -749,7 +758,7 @@ Use `fieldflo-test-verifier`.
     --reporter=list --workers=1 --retries=0
   ```
   Use `./node_modules/.bin/playwright`, not bare `npx playwright` — `npx` may resolve a cached global Playwright that dies with `MODULE_NOT_FOUND` on `src/config.ts`.
-- Test local portal slug, default `/dev1`. Never production or sandbox URLs.
+- Test local portal slug, configured in the target repository. Never production or sandbox URLs.
 - **Use Chrome DevTools MCP only when the Playwright test fails** — to inspect DOM, console, network, or visual state — or to discover selectors, debug unexpected state, do visual verification, or read console/network errors. Then fix and re-run Playwright.
 - **When you are in the browser, batch.** No click-by-click there either: `take_snapshot` (not `take_screenshot`) for uid handles, `fill_form` to set many fields in one call, `evaluate_script` to assert state without touching the UI, and `browser_batch` (claude-in-chrome) to run a whole navigate→click→type→screenshot sequence in one round trip. Never trigger a JS dialog — it freezes the extension.
 - If the UI genuinely cannot be exercised locally (e.g. feature-flag gated off, no test-data path), do **not** mark the UI verified — record the reason and flag the affected AC as **not UI-verified** so it is never silently treated as passing.
@@ -785,7 +794,7 @@ Validate:
 
 ## Step 12 — Final Review
 
-Use `fieldflo-architect-reviewer`.
+Use `devflow-architect-reviewer`.
 
 Review:
 
@@ -799,7 +808,7 @@ Review:
 8. Regression risk.
 9. Documentation completeness.
 
-If required fixes remain, route back to `fieldflo-implementer` or `fieldflo-mechanical-editor`.
+If required fixes remain, route back to `devflow-implementer` or `devflow-mechanical-editor`.
 
 Capture generalizable lessons: if the review (or any PR comment from CoPilot, a human reviewer, or an automated tool) surfaces a recurring pitfall, missed convention, or security gap that should not be repeated on future tickets, propose adding it to the right home per `CLAUDE.md` → "Continuous Learning from Reviews" (this skill, the matching `.claude/agents/*.md`, or `CLAUDE.md`). Always ask the user to approve the addition before writing it — never edit a skill, agent, or `CLAUDE.md` silently.
 
@@ -827,7 +836,7 @@ For `## Subagent Usage`, **print the full result inline in the final output** (n
    ```markdown
    | # | Step | Agent | Model / Effort | Purpose | Start | End | Duration | Outcome |
    |---|---|---|---|---|---|---|---|---|
-   | 1 | Step 2 — Context | fieldflo-context-analyst | Opus / xhigh | … | … | … | 03:34 | success |
+   | 1 | Step 2 — Context | devflow-context-analyst | Opus / xhigh | … | … | … | 03:34 | success |
    | … |
    | — | **Total** | — | — | — | — | — | **NN:NN** | — |
    ```

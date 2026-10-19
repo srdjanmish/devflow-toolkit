@@ -1,18 +1,27 @@
 ---
 name: pr-review
-description: Orchestrated FieldFlo PR review from a Jira ticket — triages the change by size × risk, then engages only the subagents and model tier that fit. Casual-human inline comments, gated GitHub submission.
+description: Orchestrated DevFlow PR review from a Jira ticket — triages the change by size × risk, then engages only the subagents and model tier that fit. Casual-human inline comments, gated GitHub submission.
 argument-hint: "ticket_id=<TICKET_ID> [epic_id=<EPIC_ID>] [pr_id=<PR_ID>] [profile=trivial|small|standard|high]"
 model: sonnet
 effort: high
 ---
 
+> **Target project configuration.** Read the target repository's `CLAUDE.md` /
+> `AGENTS.md` first. Resolve GitHub `{owner}/{repo}` from its remote or selected PR,
+> the Jira account from the authenticated connector, and the local health URL from
+> project configuration (ask if missing; never substitute a production URL).
+> Commands and paths below describe a reference PHP/CodeIgniter + Prisma + Docker
+> layout. Verify services, schemas, base branch and Playwright paths against the
+> target project before executing; use its documented equivalents where different.
+
+
 # Skill: PR Review From Ticket (Orchestrated, Right-Sized)
 
-Run this skill to review a FieldFlo PR using a Jira ticket as the source of truth. This skill is the **workflow controller (orchestrator)**: it gathers context, **triages the change**, fans out only as much review as the change warrants, composes inline comments, and submits to GitHub only behind an explicit approval gate.
+Run this skill to review a DevFlow PR using a Jira ticket as the source of truth. This skill is the **workflow controller (orchestrator)**: it gathers context, **triages the change**, fans out only as much review as the change warrants, composes inline comments, and submits to GitHub only behind an explicit approval gate.
 
-Repository rules live in `CLAUDE.md`. Per-role review behaviour and accumulated FieldFlo review lessons live in `.claude/agents/*.md`.
+Repository rules live in `CLAUDE.md`. Per-role review behaviour and accumulated DevFlow review lessons live in `.claude/agents/*.md`.
 
-> **Plugin scoping note.** This copy ships inside the `fieldflo-dev-workflow` plugin. Every subagent named below by its bare name (`fieldflo-context-analyst`, `fieldflo-pr-functional-reviewer`, `fieldflo-architect-reviewer`, `fieldflo-test-verifier`, `fieldflo-pr-comment-composer`) must be invoked with the fully scoped `subagent_type`: `fieldflo-dev-workflow:<agent-name>` (e.g. `fieldflo-dev-workflow:fieldflo-architect-reviewer`). Likewise, invoke the sibling `reset-environment` skill in its scoped form (`fieldflo-dev-workflow:reset-environment`). If a bare-name invocation fails to resolve, retry with the scoped form.
+> **Plugin scoping note.** This copy ships inside the `devflow-toolkit` plugin. Every subagent named below by its bare name (`devflow-context-analyst`, `devflow-pr-functional-reviewer`, `devflow-architect-reviewer`, `devflow-test-verifier`, `devflow-pr-comment-composer`) must be invoked with the fully scoped `subagent_type`: `devflow-toolkit:<agent-name>` (e.g. `devflow-toolkit:devflow-architect-reviewer`). Likewise, invoke the sibling `reset-environment` skill in its scoped form (`devflow-toolkit:reset-environment`). If a bare-name invocation fails to resolve, retry with the scoped form.
 
 This skill assumes:
 
@@ -41,8 +50,8 @@ Optional:
 Usage:
 
 ```text
-/pr-review ticket_id=CSE-5877
-/pr-review ticket_id=CSE-5877 profile=high      # force full fan-out
+/pr-review ticket_id=PROJ-5877
+/pr-review ticket_id=PROJ-5877 profile=high      # force full fan-out
 ```
 
 If `epic_id` is missing: use the Jira parent/epic if available, else `ticket_id` as the root folder.
@@ -51,7 +60,7 @@ If `ticket_id` is missing, return:
 
 ```text
 Usage:   /pr-review ticket_id=<TICKET_ID> [epic_id=<EPIC_ID>] [pr_id=<PR_ID>] [profile=...]
-Example: /pr-review ticket_id=CSE-5877
+Example: /pr-review ticket_id=PROJ-5877
 ```
 
 Work folder: `agents/context/{ROOT_ID}/{TICKET_ID}/`
@@ -79,26 +88,26 @@ Do not store secrets, tokens, credentials, or raw PII in these files.
 
 | Lane | Agent | Default purpose |
 |---|---|---|
-| Context | `fieldflo-context-analyst` | Jira/Slack/Notion/PR synthesis, AC extraction. |
-| Functional | `fieldflo-pr-functional-reviewer` | AC-by-AC coverage + functional defects on the finished diff. |
-| Architecture / security | `fieldflo-architect-reviewer` | Code quality, **security (any violation = blocker)**, DB/Prisma, tenant, cross-system, regression, sensitive-data. Also the **combined** reviewer for Small PRs (add AC coverage to its prompt). |
-| UI / behavioural | `fieldflo-test-verifier` | Playwright-first UI verification (temporary spec, run via CLI) + test-data verification. Browser MCP only to debug a failure. |
-| Comments | `fieldflo-pr-comment-composer` | Dedup findings → casual-human inline comments + gh payload (never submits). |
+| Context | `devflow-context-analyst` | Jira/Slack/Notion/PR synthesis, AC extraction. |
+| Functional | `devflow-pr-functional-reviewer` | AC-by-AC coverage + functional defects on the finished diff. |
+| Architecture / security | `devflow-architect-reviewer` | Code quality, **security (any violation = blocker)**, DB/Prisma, tenant, cross-system, regression, sensitive-data. Also the **combined** reviewer for Small PRs (add AC coverage to its prompt). |
+| UI / behavioural | `devflow-test-verifier` | Playwright-first UI verification (temporary spec, run via CLI) + test-data verification. Browser MCP only to debug a failure. |
+| Comments | `devflow-pr-comment-composer` | Dedup findings → casual-human inline comments + gh payload (never submits). |
 
 ### Profiles (Step 2 selects exactly one)
 
 | Profile | When | Context | Review lanes | Comments |
 |---|---|---|---|---|
 | **Trivial** | **Non-code only** — docs/markdown/comments/copy/config; **0 risk triggers**. | orchestrator inline | **orchestrator inline — 0 subagents** | orchestrator inline |
-| **Small** | ≤ ~3 application files **and** ≤ ~150 changed app lines **and** **0 risk triggers**. | orchestrator inline (+ one targeted Slack search only if the ticket cites prior discussion) | **1 subagent:** `fieldflo-architect-reviewer` @ **Sonnet**, prompted to do **AC coverage + code quality + security** in one pass. UI lane **only if** there is a UI surface **and** it is locally testable. | orchestrator inline |
-| **Standard** | More than Small, but no risk trigger; or moderate logic across a few subsystems. | `fieldflo-context-analyst` @ **Sonnet** | **parallel:** `fieldflo-pr-functional-reviewer` @ Sonnet **+** `fieldflo-architect-reviewer` @ **Opus xhigh**; **+ UI** if UI surface & testable. | composer agent if >~5 findings across lanes, else orchestrator inline |
-| **High / Large** | **Any risk trigger**; or > ~10 app files; or multiple subsystems; or the user asks for a thorough/deep review (or `profile=high`). | `fieldflo-context-analyst` @ **Opus xhigh** | **full parallel fan-out:** functional + architect + UI, all @ **Opus xhigh**. | composer agent |
+| **Small** | ≤ ~3 application files **and** ≤ ~150 changed app lines **and** **0 risk triggers**. | orchestrator inline (+ one targeted Slack search only if the ticket cites prior discussion) | **1 subagent:** `devflow-architect-reviewer` @ **Sonnet**, prompted to do **AC coverage + code quality + security** in one pass. UI lane **only if** there is a UI surface **and** it is locally testable. | orchestrator inline |
+| **Standard** | More than Small, but no risk trigger; or moderate logic across a few subsystems. | `devflow-context-analyst` @ **Sonnet** | **parallel:** `devflow-pr-functional-reviewer` @ Sonnet **+** `devflow-architect-reviewer` @ **Opus xhigh**; **+ UI** if UI surface & testable. | composer agent if >~5 findings across lanes, else orchestrator inline |
+| **High / Large** | **Any risk trigger**; or > ~10 app files; or multiple subsystems; or the user asks for a thorough/deep review (or `profile=high`). | `devflow-context-analyst` @ **Opus xhigh** | **full parallel fan-out:** functional + architect + UI, all @ **Opus xhigh**. | composer agent |
 
 **Selection rules (read these — they prevent the two failure modes):**
 
 1. **Risk triggers dominate size, always.** If any risk trigger is present, the floor is **Standard** regardless of line count, and the triggering concern's lane runs at **Opus xhigh**. A one-line change to a migration or an auth check is *not* Small.
 2. **Ties round UP.** When a PR sits between two profiles, pick the heavier one. The asymmetry is deliberate: over-reviewing wastes tokens; under-reviewing merges a bug or vuln into someone else's PR. Spend the tokens.
-3. **Mid-review escalation.** If a Small/Standard lane surfaces a genuine high-risk finding (security, DB, tenant, API, payroll), escalate **that finding** to `fieldflo-architect-reviewer` @ Opus xhigh before forming the verdict, and log the re-route.
+3. **Mid-review escalation.** If a Small/Standard lane surfaces a genuine high-risk finding (security, DB, tenant, API, payroll), escalate **that finding** to `devflow-architect-reviewer` @ Opus xhigh before forming the verdict, and log the re-route.
 4. **`profile=` input overrides triage** but rules 1–3 still apply on top (you may always go heavier than forced).
 
 ### Risk triggers (ANY → minimum Standard; that concern → Opus xhigh)
@@ -155,7 +164,7 @@ Format:
 
 | # | Step | Agent | Model / Effort | Purpose | Start | End | Duration | Outcome |
 |---|---|---|---|---|---|---|---|---|
-| 1 | Step 4 — Review | fieldflo-architect-reviewer | Sonnet / high | Combined AC + quality + security | … | … | … | success |
+| 1 | Step 4 — Review | devflow-architect-reviewer | Sonnet / high | Combined AC + quality + security | … | … | … | success |
 ```
 
 `Outcome` ∈ `success`, `revised`, `escalated → <agent>`, `routed back → <agent>`, `failed`.
@@ -182,7 +191,7 @@ Before any review activity that **runs the app** (a UI lane via Chrome DevTools 
 
 - `base_branch` = the PR's target branch (a release branch like `web-26-07-02-x1`, else `develop`)
 - `return_branch` = the PR branch
-- `health_url` = the local portal at the slug the review will exercise (default `https://portal.fieldflo.dev/dev1`)
+- `health_url` = the local portal at the slug the review will exercise (from the target repository configuration; no built-in default)
 
 Implicit, mandatory **ask** each time the gate is reached — the user opts in or out; asking is mandatory, the reset runs only on `yes`. After a `yes` reset the local DB/volumes are fresh — re-seed any data the functional/UI check needs. Skip the ask only when the chosen profile does **no** app execution (e.g. Trivial/Small static-only reviews). `docker compose down -v` is local-data only (volumes), not a VCS action — compatible with this skill's read-only posture; the yes/no answer is the authorization.
 
@@ -197,7 +206,7 @@ Create or reuse `agents/context/{ROOT_ID}/{TICKET_ID}/`. If a prior PR review ex
 ## Step 1 — Branch Setup, PR Resolution & Assignment (orchestrator)
 
 ### 1.1 — Assignment check (first)
-Fetch the ticket (`getJiraIssue`), read `assignee`. If unassigned, assign to the current user (`srdjan@fieldflo.com`) via `editJiraIssue`. If it fails, note and continue — never block.
+Fetch the ticket (`getJiraIssue`), read `assignee`. If unassigned, assign to the current user (resolve the authenticated Jira user/account ID through the Jira connector; never hardcode an email) via `editJiraIssue`. If it fails, note and continue — never block.
 
 ### 1.2 — Resolve the PR
 Read linked PR(s)/branch from Jira; else `gh pr list --head <branch>`. Multiple PRs → review all. None → Hard Gate #1.
@@ -239,9 +248,9 @@ This single decision is what keeps the review proportionate. Spend the rest of t
 
 ## Step 3 — Context (profile-aware)
 
-- **Trivial / Small:** the orchestrator already has Jira (Step 1) and the diff. Gather context inline — read the diff and the ticket. Run a **single targeted Slack search only if** the ticket cites prior discussion/decisions; skip Notion unless the ticket points to a doc. Do **not** spawn `fieldflo-context-analyst`. Write a short context note into `PR_Review.md` directly (no separate `Analysis.md`).
-- **Standard:** delegate to `fieldflo-context-analyst` @ Sonnet → `Analysis.md` (Jira mandatory; Slack/Notion bounded; PR comments). Escalate to Opus if a risk trigger fired.
-- **High / Large:** delegate to `fieldflo-context-analyst` @ Opus xhigh → `Analysis.md`.
+- **Trivial / Small:** the orchestrator already has Jira (Step 1) and the diff. Gather context inline — read the diff and the ticket. Run a **single targeted Slack search only if** the ticket cites prior discussion/decisions; skip Notion unless the ticket points to a doc. Do **not** spawn `devflow-context-analyst`. Write a short context note into `PR_Review.md` directly (no separate `Analysis.md`).
+- **Standard:** delegate to `devflow-context-analyst` @ Sonnet → `Analysis.md` (Jira mandatory; Slack/Notion bounded; PR comments). Escalate to Opus if a risk trigger fired.
+- **High / Large:** delegate to `devflow-context-analyst` @ Opus xhigh → `Analysis.md`.
 
 **Missing-requirements gate:** if Jira has no meaningful description **and** no ACs → Hard Gate #3.
 
@@ -254,11 +263,11 @@ This single decision is what keeps the review proportionate. Spend the rest of t
 Dispatch independent lanes **concurrently** (single message, parallel `Agent` calls). Every lane prompt must (a) state the base branch and the 3-dot file set **with ignored paths already excluded (`agents/` — see Step 2)**, (b) tell the lane to **write its output file in one pass** (no "draft then finalize" round-trips), and (c) carry the relevant slice of context.
 
 - **Trivial:** no review subagent. The orchestrator reviews the doc/config diff inline against the ticket, plus `php -l` on any changed `.php`.
-- **Small:** **one** subagent — `fieldflo-architect-reviewer` @ **Sonnet** — prompted to cover **AC-by-AC coverage + code quality + security** in a single pass, writing `ArchitectReview.md`. Add the UI lane whenever there is a testable UI surface — mandatory for UI changes (see **UI surface**). The orchestrator runs `php -l` on changed files inline.
-- **Standard:** `fieldflo-pr-functional-reviewer` @ Sonnet **+** `fieldflo-architect-reviewer` @ Opus xhigh, parallel; **+ UI** lane if a testable UI surface exists.
+- **Small:** **one** subagent — `devflow-architect-reviewer` @ **Sonnet** — prompted to cover **AC-by-AC coverage + code quality + security** in a single pass, writing `ArchitectReview.md`. Add the UI lane whenever there is a testable UI surface — mandatory for UI changes (see **UI surface**). The orchestrator runs `php -l` on changed files inline.
+- **Standard:** `devflow-pr-functional-reviewer` @ Sonnet **+** `devflow-architect-reviewer` @ Opus xhigh, parallel; **+ UI** lane if a testable UI surface exists.
 - **High / Large:** functional + architect + UI, all @ Opus xhigh, parallel.
 
-For Standard/High the architect lane must explicitly cover: code quality & conventions, security (any violation = BLOCKER), DB/Prisma, cross-system impact, regression, sensitive-data. (The agent holds the FieldFlo lessons — don't restate them in the prompt.)
+For Standard/High the architect lane must explicitly cover: code quality & conventions, security (any violation = BLOCKER), DB/Prisma, cross-system impact, regression, sensitive-data. (The agent holds the DevFlow lessons — don't restate them in the prompt.)
 
 Apply **Static-Check Scoping** here: scoped to changed files by default; full suites only for broad diffs or on request.
 
@@ -267,7 +276,7 @@ Apply **Static-Check Scoping** here: scoped to changed files by default; full su
 ## Step 5 — Comment Composition (profile-aware)
 
 - **Trivial / Small, or ≤ ~5 findings:** the **orchestrator composes** the inline comments directly (few findings, no cross-lane dedup needed). Use the tone spec below verbatim — do not regress to linter voice.
-- **Standard with >~5 findings / High:** delegate to `fieldflo-pr-comment-composer` to dedup across lanes, drop anything already in existing PR comments, and stage `InlineComments.md` + `inline-comments.json`.
+- **Standard with >~5 findings / High:** delegate to `devflow-pr-comment-composer` to dedup across lanes, drop anything already in existing PR comments, and stage `InlineComments.md` + `inline-comments.json`.
 
 Either way the comments are **staged, never posted** — submission is Step 8 behind the gate.
 
@@ -306,7 +315,7 @@ Present: final status + top issues; the staged `InlineComments.md` and count; th
 Should I post these as inline comments on the PR? (Reply `post` to publish, or give feedback to revise.)
 ```
 
-Only on `post` submit a single PR review (`gh api repos/FieldFlo/portal.fieldflo.com/pulls/{pr}/reviews`, `event=COMMENT`, `comments[]`, head SHA), verify with `gh pr view <pr> --comments`, report the URL. Feedback → revise (orchestrator or composer) and re-present.
+Only on `post` submit a single PR review (`gh api repos/{owner}/{repo}/pulls/{pr}/reviews`, `event=COMMENT`, `comments[]`, head SHA), verify with `gh pr view <pr> --comments`, report the URL. Feedback → revise (orchestrator or composer) and re-present.
 
 ---
 
@@ -327,7 +336,7 @@ Fetch the ticket with `getJiraIssue`, `expand: "editmeta"`, and `fields: ["issue
 | Root Cause Category | `customfield_11065` | `[{"value": "<option>"}]` |
 | Escape Point | `customfield_11066` | `[{"value": "<option>"}]` |
 
-Set `components` **by id**. A name-based payload (`{"name": …}`) is rejected with `You do not have permission to create new components` even when the name matches an existing component exactly (observed on CSE-8798).
+Set `components` **by id**. A name-based payload (`{"name": …}`) is rejected with `You do not have permission to create new components` even when the name matches an existing component exactly (observed on PROJ-8798).
 
 If all four fields are already filled, report their values and continue. Never overwrite a filled field. If a filled value looks wrong, say so and leave it unchanged unless the user asks for the change.
 

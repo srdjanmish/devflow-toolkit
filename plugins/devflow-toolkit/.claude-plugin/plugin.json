@@ -1,0 +1,11 @@
+{
+  "name": "devflow-toolkit",
+  "description": "DevFlow Jira-ticket dev workflow: develop-ticket orchestrator (with a startup dependency-check gate), pr-review, prisma-migrations, update-openapi, and reset-environment skills, plus the devflow-* subagent team they delegate to. UI verification is Playwright-first \u2014 a temporary, never-committed spec run through the CLI, with the browser MCP reserved for debugging.",
+  "version": "2.0.0",
+  "author": {
+    "name": "Srdjan Mis",
+    "url": "https://github.com/srdjanmish"
+  },
+  "homepage": "https://github.com/srdjanmish/devflow-toolkit",
+  "repository": "https://github.com/srdjanmish/devflow-toolkit"
+}

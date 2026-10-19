@@ -3,6 +3,15 @@ name: update-openapi
 description: Update OpenAPI specifications based on API changes in the current PR. Use when new API endpoints are added, existing endpoints are modified, or user asks to update/generate OpenAPI/Swagger docs.
 ---
 
+> **Target project configuration.** Read the target repository's `CLAUDE.md` /
+> `AGENTS.md` first. Resolve GitHub `{owner}/{repo}` from its remote or selected PR,
+> the Jira account from the authenticated connector, and the local health URL from
+> project configuration (ask if missing; never substitute a production URL).
+> Commands and paths below describe a reference PHP/CodeIgniter + Prisma + Docker
+> layout. Verify services, schemas, base branch and Playwright paths against the
+> target project before executing; use its documented equivalents where different.
+
+
 # Update OpenAPI Specs
 
 Update OpenAPI specifications based on API changes in the current PR.

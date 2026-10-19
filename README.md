@@ -1,12 +1,12 @@
-# FieldFlo Dev Workflow — Claude Code plugin
+# DevFlow Toolkit — Claude Code plugin
 
-Internal Claude Code plugin bundling the FieldFlo Jira-ticket dev workflow so a
-teammate can get it all with one install instead of copying loose files.
+Claude Code plugin for Jira-driven development, PR review, and verification.
+Install the workflow skills and their supporting agents together.
 
 ## What's included
 
-- **Skills** (`plugins/fieldflo-dev-workflow/skills/`)
-  - `develop-fieldflo` — the ticket orchestrator (context → plan → approval → implement → test → review). Now starts every run with a **Hard Gate #0 dependency check** — before Step 0 it verifies the required subagents, skills, and MCP-backed capabilities are actually available in the session, and if anything's missing it stops and asks `Do you want to continue, work will be limited? (yes / no)` before proceeding.
+- **Skills** (`plugins/devflow-toolkit/skills/`)
+  - `develop-ticket` — the ticket orchestrator (context → plan → approval → implement → test → review). Now starts every run with a **Hard Gate #0 dependency check** — before Step 0 it verifies the required subagents, skills, and MCP-backed capabilities are actually available in the session, and if anything's missing it stops and asks `Do you want to continue, work will be limited? (yes / no)` before proceeding.
   - `pr-review` — orchestrated PR review from a Jira ticket, triaged by size × risk. On defect tickets it closes with a gated Jira classification step: it proposes `Component`, `Found By`, `Root Cause Category` and `Escape Point`, and writes them only on `set`.
   - `prisma-migrations` — the Prisma schema/migration workflow (never raw SQL).
   - `update-openapi` — keeps `frontend/apidocs/*.yaml` and the generated TS client in sync with API changes.
@@ -15,7 +15,7 @@ teammate can get it all with one install instead of copying loose files.
 ### UI verification is Playwright-first (1.2.0)
 
 Both orchestrators verify UI through a **CLI Playwright run**, not click-by-click browser
-automation. `fieldflo-test-verifier` writes a *temporary* spec plus a throwaway
+automation. `devflow-test-verifier` writes a *temporary* spec plus a throwaway
 `playwright.tmp.config.ts` **into the ticket's own work folder**
 (`agents/context/{ROOT_ID}/{TICKET_ID}/`), so `tests/aqa/` is never touched at all.
 
@@ -32,8 +32,8 @@ automation. `fieldflo-test-verifier` writes a *temporary* spec plus a throwaway
   even there the agent is told to batch (`take_snapshot` → `fill_form` → `evaluate_script`, or
   `browser_batch`).
 
-`Portal/CLAUDE.md`'s standing "don't touch AQA/Playwright" rule carries a matching exception, so
-the repo rule and the plugin no longer contradict each other.
+If the target repository restricts AQA/Playwright changes, confirm its rules allow
+temporary verification specs outside the committed test suite before running them.
 
 **Requires** the AQA project's dependencies, which are gitignored and often absent on a fresh
 machine — one-time, and Hard Gate #0 now checks for it whenever the ticket has a UI surface:
@@ -44,18 +44,43 @@ cd tests/aqa && npm install && npx playwright install chromium
 
 ## What's NOT included
 
-`technical-analysis` is referenced by `develop-fieldflo` (Step 3, optional path)
+`technical-analysis` is referenced by `develop-ticket` (Step 3, optional path)
 but is not bundled in this plugin — if it's not installed, Hard Gate #0 will
 flag it and ask before continuing; it doesn't block the rest of the workflow.
 
 ## Installing (teammate side)
 
 ```text
-/plugin marketplace add <git-url-or-path-to-this-repo>
-/plugin install fieldflo-dev-workflow@fieldflo-dev-workflow-marketplace
+/plugin marketplace add srdjanmish/devflow-toolkit
+/plugin install devflow-toolkit@devflow-toolkit-marketplace
 ```
 
-`<git-url-or-path-to-this-repo>` is wherever you push this folder (private GitHub/GitLab/Bitbucket repo, or a local path for testing). This repo currently only exists locally — push it to your corporate git host first, then share that URL.
+### Project setup
+
+Read the target repository's `CLAUDE.md` / `AGENTS.md` before using a workflow.
+Resolve its GitHub owner/repository from the selected PR or Git remote, and the
+current Jira account from the authenticated connector. Never assume the plugin's
+own GitHub repository is the application repository.
+
+Configure the local health URL, development/base branch, Compose application and
+migration services, Prisma schema paths, and Playwright project in the target
+repository's instructions. The bundled PHP/CodeIgniter, Prisma master/client/HQ,
+Docker and `tests/aqa` procedures are reference layouts: confirm they match the
+project before running commands; adapt to documented equivalents or report a
+missing dependency. Environment resets still require the skill's explicit opt-in.
+
+### Upgrading from 1.x
+
+Version 2.0.0 renames the plugin to `devflow-toolkit`, the ticket command to
+`develop-ticket`, and agent prefixes to `devflow-`. Update existing invocations
+and install the new marketplace/plugin names shown above. Old scoped names are
+not aliases. Earlier commits and release tags retain their original content.
+
+## Contributing
+
+Open pull requests against `main` at
+https://github.com/srdjanmish/devflow-toolkit. Include the workflow change and how
+you verified it. Do not include credentials, internal URLs, or real ticket data.
 
 ## Known gap — verify after first install
 
@@ -64,9 +89,9 @@ name** (`<plugin-name>:<agent-name>`), but don't explicitly document how a
 skill's own prose instructions resolve a *bare*-name subagent/skill reference
 once that skill is running from inside a plugin. To be safe, every bundled
 skill here has a "Plugin scoping note" telling the model to use the scoped
-form (`fieldflo-dev-workflow:fieldflo-planner`, `fieldflo-dev-workflow:reset-environment`,
+form (`devflow-toolkit:devflow-planner`, `devflow-toolkit:reset-environment`,
 etc.) when a bare name doesn't resolve. **Do one smoke-test run** (e.g.
-`/fieldflo-dev-workflow:develop-fieldflo ticket_id=<a test ticket>`) after
+`/devflow-toolkit:develop-ticket ticket_id=<a test ticket>`) after
 installing to confirm subagent delegation actually resolves — if it errors on
 an unknown subagent type, that confirms the scoped form is required exactly as
 these notes assume.
@@ -76,7 +101,7 @@ these notes assume.
 If you (or a teammate) still have the loose, non-plugin copies of these skills
 under `~/.claude/skills/*` and agents under `~/.claude/agents/*`, installing
 this plugin creates a **second, plugin-scoped copy** alongside them. Claude
-Code doesn't merge the two — you'll have both a bare `develop-fieldflo` and a
-`fieldflo-dev-workflow:develop-fieldflo`, which can be confusing about which
+Code doesn't merge the two — you'll have both a bare `develop-ticket` and a
+`devflow-toolkit:develop-ticket`, which can be confusing about which
 one is current. Consider removing the loose copies once the plugin is
 installed and verified, so there's one source of truth.

@@ -1,5 +1,5 @@
 ---
-name: fieldflo-context-analyst
+name: devflow-context-analyst
 description: Use for Jira/Slack/Notion/PR context synthesis, acceptance criteria extraction, ambiguity detection, and risk identification before planning.
 model: opus
 effort: xhigh
@@ -35,7 +35,7 @@ tools:
 maxTurns: 12
 ---
 
-You are a senior product/engineering analyst for the FieldFlo Portal.
+You are a senior product/engineering analyst for the target application.
 
 Your role is context synthesis only. Do not modify application code.
 
